@@ -57,7 +57,7 @@
                             <goal>java</goal>
                         </goals>
                         <configuration>
-                            <mainClass>com.example.NutritionServer</mainClass> 
+                            <mainClass>com.example.NutritionServer</mainClass>
                         </configuration>
                     </execution>
                 </executions>

@@ -11,9 +11,17 @@ import javafx.util.Duration;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.Period;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.SimpleStringProperty;
+
 
 public class RegistrationApp extends Application {
+    private String name;
     private int userAge;
+    private double weight;
+    private double height;
+    private String activityLevel;
+    private String selectedGoal;
 
     @Override
     public void start(Stage primaryStage) {
@@ -60,7 +68,7 @@ public class RegistrationApp extends Application {
         vbox.setAlignment(Pos.CENTER);
         vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
 
-        Scene scene = new Scene(vbox, 400, 300);
+        Scene scene = new Scene(vbox, 600, 600);
         primaryStage.setTitle("Регистрация в Nutrition Diary");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -128,7 +136,7 @@ public class RegistrationApp extends Application {
             try (PreparedStatement insertStatement = connection.prepareStatement(insertQuery)) {
                 insertStatement.setString(1, username);
                 insertStatement.setString(2, password);
-                insertStatement.setString(3, "0"); // Роль по умолчанию "user"
+                insertStatement.setString(3, "0");
                 int rowsAffected = insertStatement.executeUpdate();
                 return rowsAffected > 0;
             }
@@ -189,7 +197,7 @@ public class RegistrationApp extends Application {
         submitButton.setOpacity(0);
 
         submitButton.setOnAction(event -> {
-            String name = nameField.getText();
+            name = nameField.getText();
             if (!name.isEmpty()) {
                 System.out.println("Имя успешно введено: " + name);
                 showGenderSelectionScreen(primaryStage);
@@ -217,7 +225,7 @@ public class RegistrationApp extends Application {
         VBox mainLayout = new VBox(20, hbox, vbox);
         mainLayout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(mainLayout, 400, 300);  // Используем mainLayout вместо vbox
+        Scene scene = new Scene(mainLayout, 600, 600);
         primaryStage.setTitle("Ввод имени");
 
         TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
@@ -258,14 +266,18 @@ public class RegistrationApp extends Application {
         femaleButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
         femaleButton.setMaxWidth(Double.MAX_VALUE);
 
+        final StringProperty selectedGender = new SimpleStringProperty("");
+
         maleButton.setOnAction(event -> {
             maleButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
             femaleButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+            selectedGender.set("male");
         });
 
         femaleButton.setOnAction(event -> {
             femaleButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
             maleButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+            selectedGender.set("female");
         });
 
         Button submitButton = new Button("Далее");
@@ -273,9 +285,9 @@ public class RegistrationApp extends Application {
         submitButton.setOpacity(0);
 
         submitButton.setOnAction(event -> {
-            if (maleButton.getStyle().contains("4CAF50") || femaleButton.getStyle().contains("4CAF50")) {
+            if (!selectedGender.get().isEmpty()) {
+                System.out.println("Выбран пол: " + selectedGender.get());
                 showBirthdateSelectionScreen(primaryStage);
-                System.out.println("Пол выбран.");
             } else {
                 showWarning("Пожалуйста, выберите пол.");
             }
@@ -300,7 +312,7 @@ public class RegistrationApp extends Application {
         mainLayout.setAlignment(Pos.CENTER);
         mainLayout.setMaxWidth(Double.MAX_VALUE);
 
-        Scene scene = new Scene(mainLayout, 400, 300);
+        Scene scene = new Scene(mainLayout, 600, 600);
         primaryStage.setTitle("Выбор пола");
 
         TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
@@ -350,14 +362,8 @@ public class RegistrationApp extends Application {
         submitButton.setOnAction(event -> {
             LocalDate birthdate = birthdatePicker.getValue();
             if (birthdate != null) {
-                int age = Period.between(birthdate, LocalDate.now()).getYears();
-                if (age >= 18) {
-                    userAge = age;
-                    System.out.println("Возраст успешно введен: " + age);
-                    showSummaryScreen(primaryStage);
-                } else {
-                    showWarning("Вы должны быть старше 18 лет.");
-                }
+                calculateAge(birthdate);
+                showWeightHeightSelectionScreen(primaryStage);
             } else {
                 showWarning("Пожалуйста, выберите дату рождения.");
             }
@@ -381,7 +387,7 @@ public class RegistrationApp extends Application {
         VBox mainLayout = new VBox(20, hbox, vbox);
         mainLayout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(mainLayout, 400, 300);
+        Scene scene = new Scene(mainLayout, 600, 600);
         primaryStage.setTitle("Выбор даты рождения");
 
         TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
@@ -410,29 +416,322 @@ public class RegistrationApp extends Application {
         fadeInBackButton.play();
     }
 
-    private void showSummaryScreen(Stage primaryStage) {
-        Label summaryLabel = new Label("Регистрация завершена!");
-        summaryLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;");
+    private void calculateAge(LocalDate birthdate) {
+        LocalDate currentDate = LocalDate.now();
+        Period period = Period.between(birthdate, currentDate);
+        userAge = period.getYears();
+        System.out.println("Возраст: " + userAge);
+    }
 
-        Label ageLabel = new Label("Ваш возраст: " + userAge);
-        ageLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+    private void showWeightHeightSelectionScreen(Stage primaryStage) {
+        Label weightHeightLabel = new Label("Укажите ваш вес и рост");
+        weightHeightLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;");
 
-        Button finishButton = new Button("Готово");
-        finishButton.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        Label weightLabel = new Label("Вес (кг):");
+        weightLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080;");
+        TextField weightField = new TextField();
+        weightField.setPromptText("Введите вес");
+        weightField.setStyle("-fx-font-size: 16px; -fx-padding: 10px; -fx-background-radius: 20px; -fx-background-color: #ffffff; -fx-border-color: #4CAF50; -fx-border-radius: 20px;");
 
-        finishButton.setOnAction(event -> {
-            showMainMenu(primaryStage);
+        Label heightLabel = new Label("Рост (см):");
+        heightLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080;");
+        TextField heightField = new TextField();
+        heightField.setPromptText("Введите рост");
+        heightField.setStyle("-fx-font-size: 16px; -fx-padding: 10px; -fx-background-radius: 20px; -fx-background-color: #ffffff; -fx-border-color: #4CAF50; -fx-border-radius: 20px;");
+
+        Button submitButton = new Button("Далее");
+        submitButton.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        submitButton.setOpacity(0);
+
+        submitButton.setOnAction(event -> {
+            String weightText = weightField.getText();
+            String heightText = heightField.getText();
+
+            if (weightText.isEmpty() || heightText.isEmpty()) {
+                showWarning("Пожалуйста, введите ваш вес и рост.");
+            } else {
+                try {
+                    weight = Double.parseDouble(weightText);
+                    height = Double.parseDouble(heightText);
+                    if (weight <= 0 || height <= 0) {
+                        showWarning("Вес и рост должны быть положительными числами.");
+                    } else {
+                        System.out.println("Вес: " + weight + ", Рост: " + height);
+                        showActivityLevelSelectionScreen(primaryStage);
+                    }
+                } catch (NumberFormatException e) {
+                    showWarning("Пожалуйста, введите корректные данные для веса и роста.");
+                }
+            }
         });
 
-        VBox vbox = new VBox(20, summaryLabel, ageLabel, finishButton);
+        Button backButton = new Button("<");
+        backButton.setStyle("-fx-font-size: 14px; -fx-padding: 5px 15px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        backButton.setOpacity(0);
+
+        backButton.setOnAction(event -> {
+            showGenderSelectionScreen(primaryStage);
+        });
+
+        VBox vbox = new VBox(20, weightHeightLabel, weightLabel, weightField, heightLabel, heightField, submitButton);
         vbox.setAlignment(Pos.CENTER);
         vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
 
-        Scene scene = new Scene(vbox, 400, 300);
-        primaryStage.setTitle("Подтверждение регистрации");
+        HBox hbox = new HBox(10, backButton);
+        hbox.setAlignment(Pos.TOP_LEFT);
+
+        VBox mainLayout = new VBox(20, hbox, vbox);
+        mainLayout.setAlignment(Pos.CENTER);
+        mainLayout.setMaxWidth(Double.MAX_VALUE);
+
+        Scene scene = new Scene(mainLayout, 600, 600);
+        primaryStage.setTitle("Выбор веса и роста");
+
+        TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
+        translateTransition.setFromX(primaryStage.getWidth());
+        translateTransition.setToX(0);
+        translateTransition.play();
 
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        FadeTransition fadeInWeightField = new FadeTransition(Duration.seconds(1), weightField);
+        fadeInWeightField.setFromValue(0);
+        fadeInWeightField.setToValue(1);
+        fadeInWeightField.play();
+
+        FadeTransition fadeInHeightField = new FadeTransition(Duration.seconds(1), heightField);
+        fadeInHeightField.setFromValue(0);
+        fadeInHeightField.setToValue(1);
+        fadeInHeightField.setDelay(Duration.seconds(0.5));
+        fadeInHeightField.play();
+
+        FadeTransition fadeInSubmitButton = new FadeTransition(Duration.seconds(1), submitButton);
+        fadeInSubmitButton.setFromValue(0);
+        fadeInSubmitButton.setToValue(1);
+        fadeInSubmitButton.setDelay(Duration.seconds(1));
+        fadeInSubmitButton.play();
+
+        FadeTransition fadeInBackButton = new FadeTransition(Duration.seconds(1), backButton);
+        fadeInBackButton.setFromValue(0);
+        fadeInBackButton.setToValue(1);
+        fadeInBackButton.setDelay(Duration.seconds(1));
+        fadeInBackButton.play();
+    }
+
+    private void showActivityLevelSelectionScreen(Stage primaryStage) {
+        Label activityLevelLabel = new Label("Выберите уровень активности");
+        activityLevelLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;");
+
+        Button lowActivityButton = new Button("Низкая активность");
+        Button moderateActivityButton = new Button("Умеренная активность");
+        Button highActivityButton = new Button("Высокая активность");
+
+        lowActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        moderateActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        highActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+
+        lowActivityButton.setOnAction(event -> {
+            activityLevel = "Low";
+            lowActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
+            moderateActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+            highActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        });
+
+        moderateActivityButton.setOnAction(event -> {
+            activityLevel = "Medium";
+            moderateActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
+            lowActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+            highActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        });
+
+        highActivityButton.setOnAction(event -> {
+            activityLevel = "High";
+            highActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
+            lowActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+            moderateActivityButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        });
+
+        Button submitButton = new Button("Далее");
+        submitButton.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        submitButton.setOpacity(0);
+
+        submitButton.setOnAction(event -> {
+            System.out.println("Выбран уровень активности: " + activityLevel);
+            showGoalSelectionScreen(primaryStage);
+        });
+
+        Button backButton = new Button("<");
+        backButton.setStyle("-fx-font-size: 14px; -fx-padding: 5px 15px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        backButton.setOpacity(0);
+
+        backButton.setOnAction(event -> {
+            showWeightHeightSelectionScreen(primaryStage);
+        });
+
+        VBox vbox = new VBox(20, activityLevelLabel, lowActivityButton, moderateActivityButton, highActivityButton, submitButton);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
+
+        HBox hbox = new HBox(10, backButton);
+        hbox.setAlignment(Pos.TOP_LEFT);
+
+        VBox mainLayout = new VBox(20, hbox, vbox);
+        mainLayout.setAlignment(Pos.CENTER);
+        mainLayout.setMaxWidth(Double.MAX_VALUE);
+
+        Scene scene = new Scene(mainLayout, 600, 600);
+        primaryStage.setTitle("Выбор уровня активности");
+
+        TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
+        translateTransition.setFromX(primaryStage.getWidth());
+        translateTransition.setToX(0);
+        translateTransition.play();
+
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        FadeTransition fadeInLowButton = new FadeTransition(Duration.seconds(1), lowActivityButton);
+        fadeInLowButton.setFromValue(0);
+        fadeInLowButton.setToValue(1);
+        fadeInLowButton.play();
+
+        FadeTransition fadeInModerateButton = new FadeTransition(Duration.seconds(1), moderateActivityButton);
+        fadeInModerateButton.setFromValue(0);
+        fadeInModerateButton.setToValue(1);
+        fadeInModerateButton.setDelay(Duration.seconds(0.5));
+        fadeInModerateButton.play();
+
+        FadeTransition fadeInHighButton = new FadeTransition(Duration.seconds(1), highActivityButton);
+        fadeInHighButton.setFromValue(0);
+        fadeInHighButton.setToValue(1);
+        fadeInHighButton.setDelay(Duration.seconds(1));
+        fadeInHighButton.play();
+
+        FadeTransition fadeInSubmitButton = new FadeTransition(Duration.seconds(1), submitButton);
+        fadeInSubmitButton.setFromValue(0);
+        fadeInSubmitButton.setToValue(1);
+        fadeInSubmitButton.setDelay(Duration.seconds(1.5));
+        fadeInSubmitButton.play();
+
+        FadeTransition fadeInBackButton = new FadeTransition(Duration.seconds(1), backButton);
+        fadeInBackButton.setFromValue(0);
+        fadeInBackButton.setToValue(1);
+        fadeInBackButton.setDelay(Duration.seconds(1.5));
+        fadeInBackButton.play();
+    }
+
+
+    private void showGoalSelectionScreen(Stage primaryStage) {
+        Label goalSelectionLabel = new Label("Выберите вашу цель");
+        goalSelectionLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;");
+
+        Button gainWeightButton = new Button("Набор массы");
+        Button loseWeightButton = new Button("Сбросить вес");
+        Button stayFitButton = new Button("Быть в тонусе");
+
+        gainWeightButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        loseWeightButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        stayFitButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+
+        gainWeightButton.setOnAction(event -> {
+            selectedGoal = "Gain Weight";
+            updateButtonStyles(gainWeightButton, loseWeightButton, stayFitButton);
+        });
+
+        loseWeightButton.setOnAction(event -> {
+            selectedGoal = "Lose Weight";
+            updateButtonStyles(loseWeightButton, gainWeightButton, stayFitButton);
+        });
+
+        stayFitButton.setOnAction(event -> {
+            selectedGoal = "Maintain Weight";
+            updateButtonStyles(stayFitButton, gainWeightButton, loseWeightButton);
+        });
+
+
+        Button submitButton = new Button("Далее");
+        submitButton.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        submitButton.setOpacity(0);
+
+        submitButton.setOnAction(event -> {
+            String selectedGoal = "";
+            if (gainWeightButton.getStyle().contains("#4CAF50")) {
+                selectedGoal = "Gain Weight";
+            } else if (loseWeightButton.getStyle().contains("#4CAF50")) {
+                selectedGoal = "Lose Weight";
+            } else if (stayFitButton.getStyle().contains("#4CAF50")) {
+                selectedGoal = "Maintain Weight";
+            }
+
+            System.out.println("Selected goal: " + selectedGoal);
+        });
+
+        Button backButton = new Button("<");
+        backButton.setStyle("-fx-font-size: 14px; -fx-padding: 5px 15px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        backButton.setOpacity(0);
+
+        backButton.setOnAction(event -> {
+            showActivityLevelSelectionScreen(primaryStage);
+        });
+
+        VBox vbox = new VBox(20, goalSelectionLabel, gainWeightButton, loseWeightButton, stayFitButton, submitButton);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
+
+        HBox hbox = new HBox(10, backButton);
+        hbox.setAlignment(Pos.TOP_LEFT);
+
+        VBox mainLayout = new VBox(20, hbox, vbox);
+        mainLayout.setAlignment(Pos.CENTER);
+        mainLayout.setMaxWidth(Double.MAX_VALUE);
+
+        Scene scene = new Scene(mainLayout, 600, 600);
+        primaryStage.setTitle("Выбор цели");
+
+        TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(0.5), mainLayout);
+        translateTransition.setFromX(primaryStage.getWidth());
+        translateTransition.setToX(0);
+        translateTransition.play();
+
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        FadeTransition fadeInGainWeightButton = new FadeTransition(Duration.seconds(1), gainWeightButton);
+        fadeInGainWeightButton.setFromValue(0);
+        fadeInGainWeightButton.setToValue(1);
+        fadeInGainWeightButton.play();
+
+        FadeTransition fadeInLoseWeightButton = new FadeTransition(Duration.seconds(1), loseWeightButton);
+        fadeInLoseWeightButton.setFromValue(0);
+        fadeInLoseWeightButton.setToValue(1);
+        fadeInLoseWeightButton.setDelay(Duration.seconds(0.5));
+        fadeInLoseWeightButton.play();
+
+        FadeTransition fadeInStayFitButton = new FadeTransition(Duration.seconds(1), stayFitButton);
+        fadeInStayFitButton.setFromValue(0);
+        fadeInStayFitButton.setToValue(1);
+        fadeInStayFitButton.setDelay(Duration.seconds(1));
+        fadeInStayFitButton.play();
+
+        FadeTransition fadeInSubmitButton = new FadeTransition(Duration.seconds(1), submitButton);
+        fadeInSubmitButton.setFromValue(0);
+        fadeInSubmitButton.setToValue(1);
+        fadeInSubmitButton.setDelay(Duration.seconds(1.5));
+        fadeInSubmitButton.play();
+
+        FadeTransition fadeInBackButton = new FadeTransition(Duration.seconds(1), backButton);
+        fadeInBackButton.setFromValue(0);
+        fadeInBackButton.setToValue(1);
+        fadeInBackButton.setDelay(Duration.seconds(1.5));
+        fadeInBackButton.play();
+    }
+
+    private void updateButtonStyles(Button selectedButton, Button... otherButtons) {
+        selectedButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
+        for (Button button : otherButtons) {
+            button.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        }
     }
 
     public static void main(String[] args) {

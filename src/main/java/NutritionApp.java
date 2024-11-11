@@ -17,7 +17,7 @@ public class NutritionApp extends Application {
         StackPane root = new StackPane();
         root.getChildren().add(welcomeText);
 
-        Scene scene = new Scene(root, 600, 400);
+        Scene scene = new Scene(root, 600, 600);
         primaryStage.setTitle("Nutrition Diary");
         primaryStage.setScene(scene);
         primaryStage.show();

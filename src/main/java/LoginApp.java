@@ -71,7 +71,7 @@ public class LoginApp extends Application {
         vbox.setAlignment(Pos.CENTER);
         vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
 
-        Scene scene = new Scene(vbox, 400, 300);
+        Scene scene = new Scene(vbox, 600, 600);
         primaryStage.setTitle("Вход в Nutrition Diary");
         primaryStage.setScene(scene);
         primaryStage.show();

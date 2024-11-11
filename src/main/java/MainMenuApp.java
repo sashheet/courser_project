@@ -25,7 +25,7 @@ public class MainMenuApp extends Application {
         vbox.setAlignment(Pos.CENTER);
         vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
 
-        Scene scene = new Scene(vbox, 600, 400);
+        Scene scene = new Scene(vbox, 600, 600);
         primaryStage.setTitle("Nutrition Diary - Меню");
         primaryStage.setScene(scene);
         primaryStage.show();

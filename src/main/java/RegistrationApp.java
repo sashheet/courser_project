@@ -13,6 +13,9 @@ import java.time.LocalDate;
 import java.time.Period;
 import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Stage;
+import javafx.scene.Node;
 
 
 public class RegistrationApp extends Application {
@@ -22,6 +25,8 @@ public class RegistrationApp extends Application {
     private double height;
     private String activityLevel;
     private String selectedGoal;
+    private String username;
+    private String password;
 
     @Override
     public void start(Stage primaryStage) {
@@ -98,6 +103,8 @@ public class RegistrationApp extends Application {
     }
 
     private boolean register(String username, String password) {
+        this.username = username;
+        this.password = password;
         String usernameRegex = "^[a-zA-Z0-9]+$";
 
         if (!username.matches(usernameRegex)) {
@@ -655,6 +662,7 @@ public class RegistrationApp extends Application {
         submitButton.setOpacity(0);
 
         submitButton.setOnAction(event -> {
+            showConfirmationScreen(primaryStage);
             String selectedGoal = "";
             if (gainWeightButton.getStyle().contains("#4CAF50")) {
                 selectedGoal = "Gain Weight";
@@ -731,6 +739,118 @@ public class RegistrationApp extends Application {
         selectedButton.setStyle("-fx-font-size: 16px; -fx-text-fill: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5px; -fx-padding: 10px 30px; -fx-background-color: transparent;");
         for (Button button : otherButtons) {
             button.setStyle("-fx-font-size: 16px; -fx-text-fill: #808080; -fx-border-color: #808080; -fx-border-radius: 5px; -fx-padding: 10px 30px;");
+        }
+    }
+
+    private void showConfirmationScreen(Stage primaryStage) {
+        Label confirmationLabel = new Label("Подтверждение данных");
+        confirmationLabel.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;");
+
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(20);
+        infoGrid.setVgap(10);
+        infoGrid.setAlignment(Pos.CENTER);
+        infoGrid.setStyle("-fx-border-color: #4CAF50; -fx-border-width: 2px; -fx-background-color: #ffffff; -fx-background-radius: 10px; -fx-padding: 20px;");
+
+        Label nameLabel = new Label("Имя:");
+        Label nameValue = new Label(name);
+        Label ageLabel = new Label("Возраст:");
+        Label ageValue = new Label(userAge + " лет");
+        Label weightLabel = new Label("Вес:");
+        Label weightValue = new Label(weight + " кг");
+        Label heightLabel = new Label("Рост:");
+        Label heightValue = new Label(height + " см");
+        Label activityLabel = new Label("Активность:");
+        Label activityValue = new Label(activityLevel);
+        Label goalLabel = new Label("Цель:");
+        Label goalValue = new Label(selectedGoal);
+
+        String labelStyle = "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #4CAF50;";
+        String valueStyle = "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #D5006D;";
+
+        nameLabel.setStyle(labelStyle);
+        nameValue.setStyle(valueStyle);
+        ageLabel.setStyle(labelStyle);
+        ageValue.setStyle(valueStyle);
+        weightLabel.setStyle(labelStyle);
+        weightValue.setStyle(valueStyle);
+        heightLabel.setStyle(labelStyle);
+        heightValue.setStyle(valueStyle);
+        activityLabel.setStyle(labelStyle);
+        activityValue.setStyle(valueStyle);
+        goalLabel.setStyle(labelStyle);
+        goalValue.setStyle(valueStyle);
+
+        infoGrid.add(nameLabel, 0, 0);
+        infoGrid.add(nameValue, 1, 0);
+        infoGrid.add(ageLabel, 0, 1);
+        infoGrid.add(ageValue, 1, 1);
+        infoGrid.add(weightLabel, 0, 2);
+        infoGrid.add(weightValue, 1, 2);
+        infoGrid.add(heightLabel, 0, 3);
+        infoGrid.add(heightValue, 1, 3);
+        infoGrid.add(activityLabel, 0, 4);
+        infoGrid.add(activityValue, 1, 4);
+        infoGrid.add(goalLabel, 0, 5);
+        infoGrid.add(goalValue, 1, 5);
+
+        Button editButton = new Button("Заполнить данные заново");
+        editButton.setStyle("-fx-font-size: 14px; -fx-padding: 8px 16px; -fx-background-radius: 20px; -fx-background-color: rgba(76, 175, 80, 0.5); -fx-text-fill: white;");
+        editButton.setOnAction(event -> showNameInputScreen(primaryStage));
+
+        Label confirmPasswordLabel = new Label("Подтвердите пароль");
+        confirmPasswordLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #D5006D;"); // Малиновый цвет
+
+        PasswordField confirmPasswordField = new PasswordField();
+        confirmPasswordField.setPromptText("Повторите пароль");
+        confirmPasswordField.setStyle("-fx-font-size: 16px; -fx-padding: 10px; -fx-background-radius: 20px; -fx-background-color: #ffffff; -fx-border-color: #4CAF50; -fx-border-radius: 20px;");
+
+        Button finishButton = new Button("Завершить регистрацию");
+        finishButton.setStyle("-fx-font-size: 18px; -fx-padding: 10px 20px; -fx-background-radius: 20px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        finishButton.setOnAction(event -> {
+            String passwordConfirmation = confirmPasswordField.getText();
+            if (passwordConfirmation.equals(password)) {
+                saveUserInfoToDatabase();
+                System.out.println("Регистрация завершена!");
+                showMainMenu(primaryStage);
+            } else {
+                showWarning("Пароли не совпадают. Пожалуйста, повторите ввод.");
+            }
+        });
+
+        VBox vbox = new VBox(20, confirmationLabel, infoGrid, confirmPasswordLabel, confirmPasswordField, finishButton, editButton);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setStyle("-fx-background-color: #f4f4f4; -fx-padding: 30px;");
+
+        Scene scene = new Scene(vbox, 600, 600);
+        primaryStage.setTitle("Подтверждение регистрации");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+
+    private void saveUserInfoToDatabase() {
+        try (Connection connection = connectToDatabase()) {
+            if (connection == null) {
+                showError("Не удалось подключиться к базе данных.");
+                return;
+            }
+
+            String insertQuery = "INSERT INTO userinfo (login, name, age, weight, height, activity_level, goal) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement insertStatement = connection.prepareStatement(insertQuery)) {
+                insertStatement.setString(1, this.username);
+                insertStatement.setString(2, name);
+                insertStatement.setInt(3, userAge);
+                insertStatement.setDouble(4, weight);
+                insertStatement.setDouble(5, height);
+                insertStatement.setString(6, activityLevel);
+                insertStatement.setString(7, selectedGoal);
+
+                insertStatement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("Ошибка при сохранении данных: " + e.getMessage());
         }
     }
 
